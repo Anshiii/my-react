@@ -1,10 +1,10 @@
 import { Component } from "./component";
 
-declare type TEXT_ELEMENT = string;
 
 export const TEXT_ELEMENT = "TEXT ELEMENT";
+
 export declare type element = {
-  type: string | Function | Component |TEXT_ELEMENT;
+  type: any;
   props: object;
 };
 
@@ -25,7 +25,7 @@ export function createElement(
 }
 
 /* 创建文本 element */
-function createTextElement(value: string): element {
+export function createTextElement(value: string): element {
   return createElement(TEXT_ELEMENT, { nodeValue: value });
 }
 

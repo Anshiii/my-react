@@ -20,7 +20,7 @@ export const Deletion = /*              */ 0b000000001000;
 export declare type Fiber = {
   tag: number; //WORKTYPE
   key?: string;
-  type: Function | string | Component;
+  type: any;
   stateNode?: DOM | any; // 这个 fiber 相关的 dom？
   child?: Fiber;
   sibling?: Fiber;
