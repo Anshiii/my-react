@@ -1,7 +1,8 @@
 import { createElement, element } from "./element";
 import { createInstance, Component } from "./component";
 import { DOM, createDomElement, updateDomProperties } from "./dom";
-const { requestIdleCallback } = window;
+
+const { requestIdleCallback } = <any>window;
 
 /* FIBER WORKTYPE */
 export const FunctionComponent = 0;
@@ -18,19 +19,19 @@ export const Deletion = /*              */ 0b000000001000;
 
 export declare type Fiber = {
   tag: number; //WORKTYPE
-  key: string;
+  key?: string;
   type: Function | string | Component;
-  stateNode: DOM | any; // 这个 fiber 相关的 dom？
-  child: Fiber;
-  sibling: Fiber;
-  parent: Fiber; // 源码没有 parent ？？？
-  index: number;
-  alternate: Fiber; //他之前替代的 old-tree 上的 fiber。
-  effectTag: number; // 执行的操作 替换-更新-删除-移动 - 含有该属性的 fiber 会额外记录
-  effects: Fiber[]; // 副作用fiber 集合？？？
-  memoizedState: any; // 用于输出的 state
-  memoizedProps: any; //旧的 props
-  pendingProps: any; // 新的 props
+  stateNode?: DOM | any; // 这个 fiber 相关的 dom？
+  child?: Fiber;
+  sibling?: Fiber;
+  parent?: Fiber; // 源码没有 parent ？？？
+  index?: number;
+  alternate?: Fiber; //他之前替代的 old-tree 上的 fiber。
+  effectTag?: number; // 执行的操作 替换-更新-删除-移动 - 含有该属性的 fiber 会额外记录
+  effects?: Fiber[]; // 副作用fiber 集合？？？
+  memoizedState?: any; // 用于输出的 state
+  memoizedProps?: any; //旧的 props
+  pendingProps?: any; // 新的 props
 };
 
 /* 更新来源,初次挂载和后续更新- dirtyQueue 的常量 */
@@ -41,7 +42,7 @@ declare type work = {
   // type:DELETION|REPLACE|UPDATE|MOVE
 };
 
-let dirtyQueue = [];
+let dirtyQueue: any[] = [];
 let nextUnitOfWork: Fiber;
 let pendingCommit: Fiber;
 // render 初次挂载
@@ -78,7 +79,7 @@ function performWork(deadline: IDLEDeadline) {
   }
 }
 
-function workLoop(deadline) {
+function workLoop(deadline: IDLEDeadline) {
   if (!nextUnitOfWork) {
     setNextUnitOfWork();
   }
@@ -104,10 +105,23 @@ function setNextUnitOfWork(): void {
   /* the root of a new wip tree。 qua root 但是 props 用子元素的。 */
   nextUnitOfWork = {
     tag: HostRoot,
+    type:root.type, //@type
     stateNode: update.container || root.stateNode, //container 也只是 render 的 update 才有
     pendingProps: update.nextProps || root.props, // props 只有 来自 render 的 update 会传递
-    alternate: root //旧的 root
+    alternate: root //旧的 root fiber
   };
+}
+
+function getRoot(fiber: Fiber) {
+  let tem = fiber;
+  while (tem){
+    if (tem.parent) {
+      tem = tem.parent;
+    }else{
+      return tem
+    }
+  }
+    
 }
 
 /* 难道每次一点更新都是从头到尾的walk？ */
@@ -163,6 +177,30 @@ function updateClassComponent(wipFiber: Fiber) {
 
   const newChildElements = wipFiber.stateNode.render();
   reconcileChildrenArray(wipFiber, newChildElements);
+}
+
+function cloneChildFibers(fiber:Fiber) {
+  /* 因为有 alterstate 所以要新建 fiber node */
+  const oldFiber = fiber.alternate;
+  if(!oldFiber.child)return;
+
+  let oldChild = oldFiber.child;
+  fiber.child = oldChild;
+  let prevFiber:Fiber;
+  while(oldChild){
+    const newFiber = {
+      ...oldFiber,
+      alternate:oldChild,
+      parent:fiber
+    }
+    if(prevFiber){
+      prevFiber.sibling = newFiber
+    }else{
+      fiber.child = newFiber;
+    }
+    oldChild = oldChild.sibling;
+    prevFiber = newFiber;
+  }
 }
 
 /* core 创建 children fiber。*/
@@ -277,7 +315,7 @@ function commitDeletion(parent: DOM, fiber: Fiber) {
   /* classComponent 到底与什么不一样呢。*/
   let node = fiber;
   while (true) {
-    if (node.tag == CLASS_COMPONENT) {
+    if (node.tag == ClassComponent) {
       node = node.child;
       continue;
     }
@@ -291,3 +329,4 @@ function commitDeletion(parent: DOM, fiber: Fiber) {
     node = node.sibling;
   }
 }
+
