@@ -1,6 +1,6 @@
 import {createElement} from './element';
 import {Component} from './component';
-import {render} from './reconciler';
+import {render} from './dom';
 
 
 export default {

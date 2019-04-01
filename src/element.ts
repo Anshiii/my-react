@@ -1,25 +1,33 @@
+import { Component } from "./component";
+
+declare type TEXT_ELEMENT = string;
+
 export const TEXT_ELEMENT = "TEXT ELEMENT";
+export declare type element = {
+  type: string | Function | Component |TEXT_ELEMENT;
+  props: object;
+};
 
-
-/**
- *
- *
- * @export
- * @param {*} type 元素的类型 组件的话就是函数本身/
- * @param {*} config
- * @param {*} args children 可作为一系列参数传递进来
- */
-export function createElement(type,config,...args):Element{
-    const props = Object.assign({},config);
-    const hasChildren = args.length>0;
-    const rawChildren = hasChildren ? [...args]:[]; // 类数组转为数组
-    // 过滤 空和false 值的子元素
-    props.children = rawChildren.filter(c => c != null && c !==false)
-    .map(c => c instanceof Object?c:createTextElement(c));
-
-    return {type,props}
+export function createElement(
+  type: string | Function | Component,
+  config: object,
+  ...children: element[]
+): element {
+  /* 过滤 null - undefined 的子元素 */
+  const rawChildren = children.filter((item: element) => item != null);
+  return {
+    type,
+    props: {
+      ...config,
+      children:rawChildren
+    }
+  };
 }
 
-function createTextElement(value:string){
-    return createElement(TEXT_ELEMENT,{nodeValue:value})
+/* 创建文本 element */
+function createTextElement(value: string): element {
+  return createElement(TEXT_ELEMENT, { nodeValue: value });
 }
+
+
+/* 这里的方法是 jsx 调用。（哦吼？） */
