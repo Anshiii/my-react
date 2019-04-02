@@ -7,6 +7,9 @@ module.exports = {
   mode: 'development',
   entry: './src/index.ts',
   devtool: 'inline-source-map',
+  resolve: {
+    extensions: ['.ts', '.js', '.json'],
+  },
   devServer: {
     contentBase: './dist',
     hot: true,
