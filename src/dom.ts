@@ -1,5 +1,5 @@
 import { scheduleRender, Fiber } from "./reconciler";
-import { element, TEXT_ELEMENT } from "./element";
+import { element ,TEXT_ELEMENT} from "./element";
 
 export declare type DOM = any;
 
@@ -66,12 +66,11 @@ export function updateDomProperties(dom: DOM, lastProps: any, nextProps: any) {
 /* 创建的时候只创建父元素？ */
 export function createDomElement(fiber: Fiber) {
   let domEle;
-  switch (typeof fiber.type) {
+  switch (fiber.type) {
     case TEXT_ELEMENT:
       domEle = document.createTextNode(fiber.pendingProps.nodeValue);
-    case "string":
-    case "function":
-    case "object":
+      break;
+    default:
       domEle = document.createElement(fiber.type);
   }
   /* 创建 dom 元素时还需要设置 prop */
