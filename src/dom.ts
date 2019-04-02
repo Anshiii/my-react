@@ -7,7 +7,7 @@ export function render(element: element, container: DOM) {
   scheduleRender(element, container);
 }
 
-export function updateDomProperties(dom: DOM, lastProps: any, nextProps: any) {
+export function updateDomProperties(dom: DOM, lastProps: any={}, nextProps: any) {
   for (let propKey in lastProps) {
     if (nextProps.hasOwnProperty(propKey)) {
       continue;
@@ -68,6 +68,7 @@ export function createDomElement(fiber: Fiber) {
   let domEle;
   switch (fiber.type) {
     case TEXT_ELEMENT:
+    case undefined:
       domEle = document.createTextNode(fiber.pendingProps.nodeValue);
       break;
     default:

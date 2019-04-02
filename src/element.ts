@@ -1,6 +1,5 @@
 import { Component } from "./component";
 
-
 export const TEXT_ELEMENT = "TEXT ELEMENT";
 
 export declare type element = {
@@ -11,15 +10,18 @@ export declare type element = {
 export function createElement(
   type: string | Function | Component,
   config: object,
-  ...children: element[]
+  ...children: any
 ): element {
   /* 过滤 null - undefined 的子元素 */
-  const rawChildren = children.filter((item: element) => item != null);
+  const rawChildren = children
+    .filter((item: element) => item != null)
+    .map((item:any) => (item instanceof Object ? item : createTextElement(item)));
+
   return {
     type,
     props: {
       ...config,
-      children:rawChildren
+      children: rawChildren
     }
   };
 }
@@ -28,6 +30,5 @@ export function createElement(
 export function createTextElement(value: string): element {
   return createElement(TEXT_ELEMENT, { nodeValue: value });
 }
-
 
 /* 这里的方法是 jsx 调用。（哦吼？） */

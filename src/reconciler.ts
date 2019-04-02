@@ -20,7 +20,7 @@ export const Deletion = /*              */ 0b000000001000;
 export declare type Fiber = {
   tag: number; //WORKTYPE
   key?: string;
-  type: any;
+  type?: any;
   stateNode?: DOM | any; // 这个 fiber 相关的 dom？
   child?: Fiber;
   sibling?: Fiber;
@@ -34,21 +34,13 @@ export declare type Fiber = {
   pendingProps?: any; // 新的 props
 };
 
-/* 更新来源,初次挂载和后续更新- dirtyQueue 的常量 */
-const RENDER = "RENDER";
-const SETSTATE = "SETSTATE";
-
-declare type work = {
-  // type:DELETION|REPLACE|UPDATE|MOVE
-};
-
 let dirtyQueue: any[] = [];
 let nextUnitOfWork: Fiber;
 let pendingCommit: Fiber;
 // render 初次挂载
 export function scheduleRender(elements: element, container: DOM): void {
   dirtyQueue.push({
-    type: RENDER,
+    type: HostRoot,
     container,
     nextProps: { children: elements }
   });
@@ -59,7 +51,7 @@ export function scheduleRender(elements: element, container: DOM): void {
 // 后续更新,instance 是类组件的实例
 export function scheduleUpdate(instance: Component, partialState: any): void {
   dirtyQueue.push({
-    type: SETSTATE,
+    type: ClassComponent,
     instance,
     partialState
   });
@@ -86,6 +78,9 @@ function workLoop(deadline: IDLEDeadline) {
   while (nextUnitOfWork && deadline.timeRemaining() > 1) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
   }
+  if(pendingCommit){
+    commitAllWork(pendingCommit);
+  }
 }
 
 /* 从 update 创建的 fiber -- First fiber from.? */
@@ -98,14 +93,14 @@ function setNextUnitOfWork(): void {
 
   /* @que  我不知道这里为什么要获取 root。 */
   const root =
-    update.from == HostRoot
-      ? update.dom._rootContainerFiber
+    update.type == HostRoot
+      ? update.container._rootContainerFiber
       : getRoot(update.instance.__fiber); //同样instance是 setState 才有的 从 fiber 里找到 root。
 
   /* the root of a new wip tree。 qua root 但是 props 用子元素的。 */
   nextUnitOfWork = {
+    key:'root',
     tag: HostRoot,
-    type:root.type, //@type
     stateNode: update.container || root.stateNode, //container 也只是 render 的 update 才有
     pendingProps: update.nextProps || root.props, // props 只有 来自 render 的 update 会传递
     alternate: root //旧的 root fiber
@@ -114,14 +109,13 @@ function setNextUnitOfWork(): void {
 
 function getRoot(fiber: Fiber) {
   let tem = fiber;
-  while (tem){
+  while (tem) {
     if (tem.parent) {
       tem = tem.parent;
-    }else{
-      return tem
+    } else {
+      return tem;
     }
   }
-    
 }
 
 /* 难道每次一点更新都是从头到尾的walk？ */
@@ -134,7 +128,7 @@ function performUnitOfWork(workInProgress: Fiber): Fiber | null {
   /* 没有，说明子节点没有更新的内容，complete*/
   let tem = workInProgress;
   while (tem) {
-    completeWork(workInProgress);
+    completeWork(tem);
     if (tem.sibling) {
       return tem.sibling;
     }
@@ -179,23 +173,23 @@ function updateClassComponent(wipFiber: Fiber) {
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
-function cloneChildFibers(fiber:Fiber) {
+function cloneChildFibers(fiber: Fiber) {
   /* 因为有 alterstate 所以要新建 fiber node */
   const oldFiber = fiber.alternate;
-  if(!oldFiber.child)return;
+  if (!oldFiber.child) return;
 
   let oldChild = oldFiber.child;
   fiber.child = oldChild;
-  let prevFiber:Fiber;
-  while(oldChild){
+  let prevFiber: Fiber;
+  while (oldChild) {
     const newFiber = {
       ...oldFiber,
-      alternate:oldChild,
-      parent:fiber
-    }
-    if(prevFiber){
-      prevFiber.sibling = newFiber
-    }else{
+      alternate: oldChild,
+      parent: fiber
+    };
+    if (prevFiber) {
+      prevFiber.sibling = newFiber;
+    } else {
       fiber.child = newFiber;
     }
     oldChild = oldChild.sibling;
@@ -206,12 +200,22 @@ function cloneChildFibers(fiber:Fiber) {
 /* core 创建 children fiber。*/
 function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
   /* 来自 class 的 elements 可能是 null、undefin、false */
-  childElements = childElements.filter(item => item);
+  let arrayChild = Array.isArray(childElements)
+    ? childElements
+    : [childElements];
+
+  arrayChild = arrayChild.filter(item => item);
   let prevFiber: Fiber;
-  childElements.forEach((ele, index) => {
+  arrayChild.forEach((ele, index) => {
     let newFiber;
-    let oldFiber = prevFiber.alternate.sibling;
-    let isSameType = oldFiber.type === ele.type;
+    let oldFiber;
+    if (prevFiber) {
+      oldFiber = prevFiber.alternate && prevFiber.alternate.sibling;
+    } else {
+      oldFiber = wipFiber.alternate && wipFiber.alternate.child;
+    }
+
+    let isSameType = oldFiber&&ele&&oldFiber.type === ele.type;
 
     /* key值；直接遍历新的 key，旧的有一样的就移动 没有直接删除。  */
     // ele.props.key
@@ -301,7 +305,7 @@ function commitWork(fiber: Fiber) {
     case Placement:
       if (fiber.tag == HostComponent) {
         // ???@que 为啥
-        fiber.parent.stateNode.appen;
+        domParent.appendChild(dom)
       }
     case Update:
       updateDomProperties(dom, fiber.memoizedProps, fiber.pendingProps);
@@ -329,4 +333,3 @@ function commitDeletion(parent: DOM, fiber: Fiber) {
     node = node.sibling;
   }
 }
-
