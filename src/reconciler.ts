@@ -150,7 +150,7 @@ function updateHostComponent(wipFiber: Fiber) {
   if (!wipFiber.stateNode) {
     wipFiber.stateNode = createDomElement(wipFiber);
   }
-  const newChildElements = wipFiber.pendingProps&&wipFiber.pendingProps.children;
+  const newChildElements = wipFiber.pendingProps.children;
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
