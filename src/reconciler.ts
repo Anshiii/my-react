@@ -104,7 +104,6 @@ function setNextUnitOfWork(): void {
     stateNode: update.container || root.stateNode, //container 也只是 render 的 update 才有
     pendingProps: update.nextProps || root.pendingProps, // props 只有 来自 render 的 update 会传递
     alternate: root, //旧的 root fiber
-    
   };
 }
 
@@ -186,7 +185,7 @@ function cloneChildFibers(fiber: Fiber) {
     const newFiber = {
       ...oldFiber,
       alternate: oldChild,
-      parent: fiber
+      parent: fiber,
     };
     if (prevFiber) {
       prevFiber.sibling = newFiber;
@@ -224,11 +223,14 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
     /* 相同类型 更新 */
     if (isSameType) {
       newFiber = {
-        ...oldFiber,
+        type:oldFiber.type,
+        tag:oldFiber.tag,
+        stateNode:oldFiber.stateNode,
         pendingProps: ele.props,
+        memoizedState:oldFiber.memoizedState,
         parent: wipFiber, // 源码是 return -？
         alternate: oldFiber,
-        effectTag: Update
+        effectTag: Update,
       };
     }
 
