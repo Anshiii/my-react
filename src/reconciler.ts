@@ -102,8 +102,9 @@ function setNextUnitOfWork(): void {
     key:'root',
     tag: HostRoot,
     stateNode: update.container || root.stateNode, //container 也只是 render 的 update 才有
-    pendingProps: update.nextProps || root.props, // props 只有 来自 render 的 update 会传递
-    alternate: root //旧的 root fiber
+    pendingProps: update.nextProps || root.pendingProps, // props 只有 来自 render 的 update 会传递
+    alternate: root, //旧的 root fiber
+    
   };
 }
 
@@ -149,7 +150,7 @@ function updateHostComponent(wipFiber: Fiber) {
   if (!wipFiber.stateNode) {
     wipFiber.stateNode = createDomElement(wipFiber);
   }
-  const newChildElements = wipFiber.pendingProps.children;
+  const newChildElements = wipFiber.pendingProps&&wipFiber.pendingProps.children;
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
@@ -279,7 +280,7 @@ function completeWork(fiber: Fiber) {
 /* 更新 DOM */
 function commitAllWork(fiber: Fiber) {
   /* 所有 effectTage fiber */
-  fiber.effects.forEach(f => {
+  fiber.effects&&fiber.effects.forEach(f => {
     commitWork(f);
   });
   /* root 的stateNode 携带 fiber 信息指针_rootContainerFiber */

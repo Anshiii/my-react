@@ -10,8 +10,20 @@ export default {
 
 const root = document.getElementById("root");
 class App extends Component {
+    state={
+        name:" !"
+    }
+
+  click=()=>{
+      this.setState({
+          name:"???~"
+      })
+  } 
+
   render() {
-    return createElement("div", null, "Hello ",this.props.name,' !');
+    return createElement("div", {
+        onClick:this.click
+    }, "Hello ",this.props.name,this.state.name);
   }
 }
 const element = createElement(App, { name: "World" });
