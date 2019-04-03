@@ -1,4 +1,4 @@
-import { createElement, element } from "./element";
+import { element } from "./element";
 import { createInstance, Component } from "./component";
 import { DOM, createDomElement, updateDomProperties } from "./dom";
 
@@ -12,15 +12,15 @@ export const HostPortal = 4; // A subtree. Could be an entry point to a differen
 export const HostComponent = 5;
 
 /* FIBER effectTag */
-export const Placement = /*             */ 0b000000000010;
-export const Update = /*                */ 0b000000000100;
-export const PlacementAndUpdate = /*    */ 0b000000000110;
-export const Deletion = /*              */ 0b000000001000;
+export const Placement = /*             */ 0b000000000010; //2
+export const Update = /*                */ 0b000000000100; //4
+export const PlacementAndUpdate = /*    */ 0b000000000110; //5
+export const Deletion = /*              */ 0b000000001000; //8
 
 export declare type Fiber = {
   tag: number; //WORKTYPE
   key?: string;
-  type?: any;
+  type?: any; //function|class|string
   stateNode?: DOM | any; // 这个 fiber 相关的 dom？
   child?: Fiber;
   sibling?: Fiber;
@@ -78,7 +78,7 @@ function workLoop(deadline: IDLEDeadline) {
   while (nextUnitOfWork && deadline.timeRemaining() > 1) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
   }
-  if(pendingCommit){
+  if (pendingCommit) {
     commitAllWork(pendingCommit);
   }
 }
@@ -99,11 +99,11 @@ function setNextUnitOfWork(): void {
 
   /* the root of a new wip tree。 qua root 但是 props 用子元素的。 */
   nextUnitOfWork = {
-    key:'root',
+    key: "root",
     tag: HostRoot,
     stateNode: update.container || root.stateNode, //container 也只是 render 的 update 才有
     pendingProps: update.nextProps || root.pendingProps, // props 只有 来自 render 的 update 会传递
-    alternate: root, //旧的 root fiber
+    alternate: root //旧的 root fiber
   };
 }
 
@@ -138,11 +138,21 @@ function performUnitOfWork(workInProgress: Fiber): Fiber | null {
 
 /* */
 function beginWork(workInProgress: Fiber) {
-  if (workInProgress.tag === ClassComponent) {
-    updateClassComponent(workInProgress);
-  } else {
-    updateHostComponent(workInProgress);
+  switch (workInProgress.tag) {
+    case ClassComponent:
+      updateClassComponent(workInProgress);
+      break;
+    case FunctionComponent:
+      updateFunctionComponent(workInProgress);
+      break;
+    default:
+      updateHostComponent(workInProgress);
   }
+}
+
+function updateFunctionComponent(wipFiber: Fiber) {
+  let component = wipFiber.type(wipFiber.pendingProps);
+  reconcileChildrenArray(wipFiber, component);
 }
 
 function updateHostComponent(wipFiber: Fiber) {
@@ -174,7 +184,7 @@ function updateClassComponent(wipFiber: Fiber) {
 }
 
 function cloneChildFibers(fiber: Fiber) {
-  /* 因为有 alterstate 所以要新建 fiber node */
+  /* 因为有  所以要新建 fiber node */
   const oldFiber = fiber.alternate;
   if (!oldFiber.child) return;
 
@@ -185,7 +195,7 @@ function cloneChildFibers(fiber: Fiber) {
     const newFiber = {
       ...oldFiber,
       alternate: oldChild,
-      parent: fiber,
+      parent: fiber
     };
     if (prevFiber) {
       prevFiber.sibling = newFiber;
@@ -205,40 +215,46 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
     : [childElements];
 
   arrayChild = arrayChild.filter(item => item);
-  let prevFiber: Fiber;
+  let oldFiber = wipFiber.alternate ? wipFiber.alternate.child : null;
+  let newFiber: Fiber;
   arrayChild.forEach((ele, index) => {
-    let newFiber;
-    let oldFiber;
-    if (prevFiber) {
-      oldFiber = prevFiber.alternate && prevFiber.alternate.sibling;
-    } else {
-      oldFiber = wipFiber.alternate && wipFiber.alternate.child;
-    }
+    const prevFiber = newFiber;
+    const isSameType = oldFiber && ele && ele.type == oldFiber.type;
 
-    let isSameType = oldFiber&&ele&&oldFiber.type === ele.type;
-
-    /* key值；直接遍历新的 key，旧的有一样的就移动 没有直接删除。  */
-    // ele.props.key
-
-    /* 相同类型 更新 */
+    /* 相同类型 更新- ele 肯定也存在 */
     if (isSameType) {
       newFiber = {
-        type:oldFiber.type,
-        tag:oldFiber.tag,
-        stateNode:oldFiber.stateNode,
+        type: oldFiber.type,
+        tag: oldFiber.tag,
+        stateNode: oldFiber.stateNode,
         pendingProps: ele.props,
-        memoizedState:oldFiber.memoizedState,
+        memoizedState: oldFiber.memoizedState,
         parent: wipFiber, // 源码是 return -？
         alternate: oldFiber,
-        effectTag: Update,
+        effectTag: Update
       };
     }
 
-    /* 不同类型替换,且现有类型有效 */
+    /* 不同类型替换,且 ele 存在 */
     if (!isSameType && ele) {
+      /* setTag */
+      let tag = HostComponent;
+      switch (typeof ele.type) {
+        case "string":
+          tag = HostComponent;
+          break;
+        case "function":
+          if (ele.type.isReactComponent) {
+            tag = ClassComponent;
+          } else {
+            tag = FunctionComponent;
+          }
+          break;
+      }
+
       newFiber = {
         type: ele.type,
-        tag: typeof ele.type === "string" ? HostComponent : ClassComponent,
+        tag,
         pendingProps: ele.props,
         parent: wipFiber,
         effectTag: Placement
@@ -248,43 +264,56 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
     if (!isSameType && oldFiber) {
       oldFiber.effectTag = Deletion;
       /*因为这个fiber 不在 wip tree 里，所以放在 effects 里？？哦吼？ */
+      wipFiber.effects = wipFiber.effects || [];
       wipFiber.effects.push(oldFiber);
     }
 
-    if (prevFiber) {
-      prevFiber.sibling = newFiber;
-    } else {
-      wipFiber.child = newFiber; // 就指一个 child.
+    if (oldFiber) {
+      /* 变成新的 old*/
+      oldFiber = oldFiber.sibling;
     }
-    prevFiber = newFiber;
+
+    if (index == 0) {
+      wipFiber.child = newFiber;
+    } else if (prevFiber && ele) {
+      prevFiber.sibling = newFiber;
+    }
   });
 }
 
-function completeWork(fiber: Fiber) {
-  /* 为什么要这样呢。 //TODE 写在别的地方 */
-  if (fiber.tag == ClassComponent) {
-    fiber.stateNode.__fiber = fiber;
+function completeWork(workInProgress: Fiber) {
+  /* for what? */
+  switch (workInProgress.tag) {
+    case FunctionComponent:
+      break;
+    case ClassComponent:
+      workInProgress.stateNode.__fiber = workInProgress;
   }
 
-  if (fiber.parent) {
-    // 父元素的 effects 储存着 effectTag 不为空值的 子元素。(还包括不在wip的fiber)
-    const thisEffect = fiber.effectTag != null ? [fiber] : [];
-    const childEffects = fiber.effects || [];
-    const parentEffects = fiber.parent.effects || [];
+  if (workInProgress.parent) {
+    // 父元素的 effects 储存着 effectTag 不为空值的 子元素。(还包括不在wip的fiber-被del的)
+    const thisEffect = workInProgress.effectTag != null ? [workInProgress] : [];
+    const childEffects = workInProgress.effects || [];
+    const parentEffects = workInProgress.parent.effects || [];
 
-    fiber.parent.effects = parentEffects.concat(childEffects, thisEffect);
+    workInProgress.parent.effects = parentEffects.concat(
+      thisEffect,
+      childEffects
+    );
   } else {
     /* root ,计算了和收集。 */
-    pendingCommit = fiber;
+    pendingCommit = workInProgress;
   }
 }
 
 /* 更新 DOM */
 function commitAllWork(fiber: Fiber) {
   /* 所有 effectTage fiber */
-  fiber.effects&&fiber.effects.forEach(f => {
-    commitWork(f);
-  });
+  console.log(fiber.effects);
+  fiber.effects &&
+    fiber.effects.forEach(f => {
+      commitWork(f);
+    });
   /* root 的stateNode 携带 fiber 信息指针_rootContainerFiber */
   fiber.stateNode._rootContainerFiber = fiber;
   nextUnitOfWork = null;
@@ -293,40 +322,59 @@ function commitAllWork(fiber: Fiber) {
 
 function commitWork(fiber: Fiber) {
   if (fiber.tag == HostRoot) {
-    return; //????@que 这是在做啥
+    return; // @que？根元素的改动直接无视-
   }
 
-  /* yyyy??? */
+  /* 函数组件和class组件到底是什么样的存在？
+  - fiber 对应的结构是存在的,但是没有dom结构
+  - 更新，主要是更新 child , updateXX 本身不存在更新操作；
+  - 删除，组件及子元素都将取消 这个时候render应该都不需要做的，但是没有提现？
+  - 移动，fiber 的移动， dom移动。
+  - 替换（新增+删除），只需新增，对于非dom节点无需操作
+   */
   let domParentFiber = fiber.parent;
-  while (domParentFiber.tag == ClassComponent) {
+  while (
+    domParentFiber.tag == ClassComponent ||
+    domParentFiber.tag == FunctionComponent
+  ) {
+    // 上层遍历至包含 dom 的fiber
     domParentFiber = domParentFiber.parent;
   }
   const domParent = domParentFiber.stateNode;
-  let dom = fiber.stateNode;
+  const dom = fiber.stateNode;
 
   switch (fiber.effectTag) {
     case Placement:
+      /* 非 host 组件新增在dom没有体现。 */
       if (fiber.tag == HostComponent) {
         // ???@que 为啥
-        domParent.appendChild(dom)
+        domParent.appendChild(dom);
       }
+      break;
     case Update:
+      /* 非 host 组件更新在dom没有体现。 */
       updateDomProperties(dom, fiber.memoizedProps, fiber.pendingProps);
       break;
     case Deletion:
       commitDeletion(domParent, fiber);
+      break;
   }
 }
 
 function commitDeletion(parent: DOM, fiber: Fiber) {
-  /* classComponent 到底与什么不一样呢。*/
+  /* class 和 func 组件的删除操作是子dom节点的删除 */
   let node = fiber;
   while (true) {
-    if (node.tag == ClassComponent) {
+    /* 寻找 child dom 循环 */
+    if (node.tag == ClassComponent || node.tag == FunctionComponent) {
       node = node.child;
       continue;
     }
-    parent.removeChild(node.stateNode);
+    if (node.stateNode) {
+      parent.removeChild(node.stateNode);
+    }
+
+    /* 只删除 子一代的节点。 */
     while (node != fiber && !node.sibling) {
       node = node.parent;
     }
