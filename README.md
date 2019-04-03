@@ -11,7 +11,7 @@ a simple project from react source code to show how the react work 📖
 
 ## todo
 - [ ] key
-- [ ] functionComponent
+- [x] functionComponent
 - [ ] priorities
 - [ ] hooks
 - [ ] events
