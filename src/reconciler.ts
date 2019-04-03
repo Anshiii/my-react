@@ -24,7 +24,7 @@ export declare type Fiber = {
   stateNode?: DOM | any; // 这个 fiber 相关的 dom？
   child?: Fiber;
   sibling?: Fiber;
-  parent?: Fiber; // 源码没有 parent ？？？
+  return?: Fiber; // 源码没有 return ？？？
   index?: number;
   alternate?: Fiber; //他之前替代的 old-tree 上的 fiber。
   effectTag?: number; // 执行的操作 替换-更新-删除-移动 - 含有该属性的 fiber 会额外记录
@@ -110,8 +110,8 @@ function setNextUnitOfWork(): void {
 function getRoot(fiber: Fiber) {
   let tem = fiber;
   while (tem) {
-    if (tem.parent) {
-      tem = tem.parent;
+    if (tem.return) {
+      tem = tem.return;
     } else {
       return tem;
     }
@@ -132,7 +132,7 @@ function performUnitOfWork(workInProgress: Fiber): Fiber | null {
     if (tem.sibling) {
       return tem.sibling;
     }
-    tem = tem.parent;
+    tem = tem.return;
   }
 }
 
@@ -195,7 +195,7 @@ function cloneChildFibers(fiber: Fiber) {
     const newFiber = {
       ...oldFiber,
       alternate: oldChild,
-      parent: fiber
+      return: fiber
     };
     if (prevFiber) {
       prevFiber.sibling = newFiber;
@@ -229,7 +229,7 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
         stateNode: oldFiber.stateNode,
         pendingProps: ele.props,
         memoizedState: oldFiber.memoizedState,
-        parent: wipFiber, // 源码是 return -？
+        return: wipFiber, // 源码是 return 
         alternate: oldFiber,
         effectTag: Update
       };
@@ -256,14 +256,14 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
         type: ele.type,
         tag,
         pendingProps: ele.props,
-        parent: wipFiber,
+        return: wipFiber,
         effectTag: Placement
       };
     }
 
     if (!isSameType && oldFiber) {
       oldFiber.effectTag = Deletion;
-      /*因为这个fiber 不在 wip tree 里，所以放在 effects 里？？哦吼？ */
+      /*因为这个fiber 不在 wip tree 里，所以放在 effects 里 */
       wipFiber.effects = wipFiber.effects || [];
       wipFiber.effects.push(oldFiber);
     }
@@ -290,13 +290,13 @@ function completeWork(workInProgress: Fiber) {
       workInProgress.stateNode.__fiber = workInProgress;
   }
 
-  if (workInProgress.parent) {
+  if (workInProgress.return) {
     // 父元素的 effects 储存着 effectTag 不为空值的 子元素。(还包括不在wip的fiber-被del的)
     const thisEffect = workInProgress.effectTag != null ? [workInProgress] : [];
     const childEffects = workInProgress.effects || [];
-    const parentEffects = workInProgress.parent.effects || [];
+    const parentEffects = workInProgress.return.effects || [];
 
-    workInProgress.parent.effects = parentEffects.concat(
+    workInProgress.return.effects = parentEffects.concat(
       thisEffect,
       childEffects
     );
@@ -332,13 +332,13 @@ function commitWork(fiber: Fiber) {
   - 移动，fiber 的移动， dom移动。
   - 替换（新增+删除），只需新增，对于非dom节点无需操作
    */
-  let domParentFiber = fiber.parent;
+  let domParentFiber = fiber.return;
   while (
     domParentFiber.tag == ClassComponent ||
     domParentFiber.tag == FunctionComponent
   ) {
     // 上层遍历至包含 dom 的fiber
-    domParentFiber = domParentFiber.parent;
+    domParentFiber = domParentFiber.return;
   }
   const domParent = domParentFiber.stateNode;
   const dom = fiber.stateNode;
@@ -361,7 +361,7 @@ function commitWork(fiber: Fiber) {
   }
 }
 
-function commitDeletion(parent: DOM, fiber: Fiber) {
+function commitDeletion(parentDom: DOM, fiber: Fiber) {
   /* class 和 func 组件的删除操作是子dom节点的删除 */
   let node = fiber;
   while (true) {
@@ -371,12 +371,12 @@ function commitDeletion(parent: DOM, fiber: Fiber) {
       continue;
     }
     if (node.stateNode) {
-      parent.removeChild(node.stateNode);
+      parentDom.removeChild(node.stateNode);
     }
 
     /* 只删除 子一代的节点。 */
     while (node != fiber && !node.sibling) {
-      node = node.parent;
+      node = node.return;
     }
     if (node == fiber) {
       return;
