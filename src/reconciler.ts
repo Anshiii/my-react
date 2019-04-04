@@ -1,10 +1,10 @@
-import { element } from "./element";
+import { element, createTextElement } from "./element";
 import { createInstance, Component } from "./component";
 import { DOM, createDomElement, updateDomProperties } from "./dom";
 
 const { requestIdleCallback } = <any>window;
 
-/* FIBER WORKTYPE */
+/* FIBER tag WORKTYPE */
 export const FunctionComponent = 0;
 export const ClassComponent = 1;
 export const HostRoot = 3; // Root of a host tree. Could be nested inside another node.
@@ -25,7 +25,7 @@ export declare type Fiber = {
   child?: Fiber;
   sibling?: Fiber;
   return?: Fiber; // 源码没有 return ？？？
-  index?: number;
+  index?: number; // fiberChildren 下标
   alternate?: Fiber; //他之前替代的 old-tree 上的 fiber。
   effectTag?: number; // 执行的操作 替换-更新-删除-移动 - 含有该属性的 fiber 会额外记录
   effects?: Fiber[]; // 副作用fiber 集合？？？
@@ -215,9 +215,14 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
     : [childElements];
 
   arrayChild = arrayChild.filter(item => item);
+
   let oldFiber = wipFiber.alternate ? wipFiber.alternate.child : null;
   let newFiber: Fiber;
   arrayChild.forEach((ele, index) => {
+    if (typeof ele === "string") {
+      ele = createTextElement(ele);
+    }
+
     const prevFiber = newFiber;
     const isSameType = oldFiber && ele && ele.type == oldFiber.type;
 
@@ -229,9 +234,10 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
         stateNode: oldFiber.stateNode,
         pendingProps: ele.props,
         memoizedState: oldFiber.memoizedState,
-        return: wipFiber, // 源码是 return 
+        return: wipFiber, // 源码是 return
         alternate: oldFiber,
-        effectTag: Update
+        effectTag: Update,
+        index
       };
     }
 
@@ -257,7 +263,8 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
         tag,
         pendingProps: ele.props,
         return: wipFiber,
-        effectTag: Placement
+        effectTag: Placement,
+        index
       };
     }
 
@@ -383,4 +390,60 @@ function commitDeletion(parentDom: DOM, fiber: Fiber) {
     }
     node = node.sibling;
   }
+}
+
+/* 记录 key 与 组件映射 */
+function mapRemainingChildren(
+  returnFiber: Fiber,
+  currentFirstChild: Fiber
+): Map<string | number, Fiber> {
+  const existingChildren: Map<string | number, Fiber> = new Map();
+  let existingChild = currentFirstChild;
+
+  /* 遍历 child 及其 sibling，记录在 map 里 */
+  while (existingChild !== null) {
+    if (existingChild.key !== null) {
+      existingChildren.set(existingChild.key, existingChild);
+    } else {
+      /* 原来 index 是这么用的 */
+      existingChildren.set(existingChild.index, existingChild);
+    }
+    existingChild = existingChild.sibling;
+  }
+  return existingChildren;
+}
+
+/* 获取更新后的 fiber */
+function updateFromMap(
+  existingChildren: Map<string | number, Fiber>,
+  returnFiber: Fiber,
+  newIdx: number,
+  newChild: any
+): Fiber {
+  /*  */
+  if (typeof newChild === "string" || typeof newChild === "number") {
+    const matchedFiber = existingChildren.get(newIdx) || null;
+    //  update TextNode
+    /* 
+    updateTextNode(
+        returnFiber,
+        matchedFiber,
+        '' + newChild,
+        expirationTime,
+      ) */
+  }
+  if (typeof newChild === "object" && newChild !== null) {
+    const matchedFiber =
+      existingChildren.get(newChild.key === null ? newIdx : newChild.key) ||
+      null;
+
+    /* 
+    updateElement(
+            returnFiber,
+            matchedFiber,
+            newChild,
+            expirationTime,
+          ) */
+  }
+  return returnFiber;
 }
