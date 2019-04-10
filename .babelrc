@@ -4,6 +4,6 @@
     "chrome": "58",
   }}]],
   "plugins": [
-    ["@babel/plugin-transform-react-jsx", { "pragma":"createElement" }]
+    ["@babel/plugin-transform-react-jsx", { "pragma":"createElement","pragmaFrag":"Fragment" }]
   ]
 }

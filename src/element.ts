@@ -1,9 +1,10 @@
 import { Component } from "./component";
 
 export const TEXT_ELEMENT = "TEXT ELEMENT";
+export const REACT_FRAGMENT_TYPE = Symbol.for('react.fragment')
 
 export function createElement(
-  type: string | Function | Component,
+  type: string | Function | Component | Symbol,
   config: object,
   children?: any
 ): element {
@@ -36,18 +37,4 @@ export function createElement(
 /* 创建文本 element */
 export function createTextElement(value: string): element {
   return createElement(TEXT_ELEMENT, { nodeValue: value });
-}
-
-function Fragment(props){
-  return createElement(Fragment,config,children)
-}
-
-export function createFragmentElement(
-  type: string | Function | Component,
-  config: object,
-  children?: any
-): element {
-  let ele = createElement(type, config, children);
-
-  return ele;
 }

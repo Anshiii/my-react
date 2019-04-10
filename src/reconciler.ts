@@ -1,4 +1,4 @@
-import { createTextElement } from "./element";
+import { createTextElement, REACT_FRAGMENT_TYPE } from "./element";
 import { createInstance, Component } from "./component";
 import { createDomElement, updateDomProperties } from "./dom";
 
@@ -133,6 +133,7 @@ function beginWork(workInProgress: Fiber) {
       break;
     case Fragment:
       updateFragmentComponent(workInProgress);
+      break;
     default:
       updateHostComponent(workInProgress);
   }
@@ -249,10 +250,11 @@ function reconcileChildrenArray(
       /* setTag */
       let tag = HostComponent;
       switch (typeof ele.type) {
-        case "string":
-          if (ele.type === "Fragment") {
+        case 'symbol':
+          if (ele.type === REACT_FRAGMENT_TYPE) {
             tag = Fragment;
           }
+          /* ele.type 的typeof 怎么是 symbol + function */
           break;
         case "function":
           if (ele.type.isReactComponent) {
