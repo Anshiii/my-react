@@ -11,6 +11,7 @@ a simple project from react source code to show how the react work 📖
 
 ## todo
 - [ ] key
+- [ ] fragment(用fragment包裹数组child，之前？)
 - [x] functionComponent
 - [ ] priorities
 - [ ] hooks

@@ -1,6 +1,6 @@
-import { element, createTextElement } from "./element";
+import { createTextElement } from "./element";
 import { createInstance, Component } from "./component";
-import { DOM, createDomElement, updateDomProperties } from "./dom";
+import { createDomElement, updateDomProperties } from "./dom";
 
 const { requestIdleCallback } = <any>window;
 
@@ -10,6 +10,7 @@ export const ClassComponent = 1;
 export const HostRoot = 3; // Root of a host tree. Could be nested inside another node.
 export const HostPortal = 4; // A subtree. Could be an entry point to a different renderer.
 export const HostComponent = 5;
+export const Fragment = 7;
 
 /* FIBER effectTag */
 export const Placement = /*             */ 0b000000000010; //2
@@ -17,28 +18,13 @@ export const Update = /*                */ 0b000000000100; //4
 export const PlacementAndUpdate = /*    */ 0b000000000110; //5
 export const Deletion = /*              */ 0b000000001000; //8
 
-export declare type Fiber = {
-  tag: number; //WORKTYPE
-  key?: string;
-  type?: any; //function|class|string
-  stateNode?: DOM | any; // 这个 fiber 相关的 dom？
-  child?: Fiber;
-  sibling?: Fiber;
-  return?: Fiber; // 源码没有 return ？？？
-  index?: number; // fiberChildren 下标
-  alternate?: Fiber; //他之前替代的 old-tree 上的 fiber。
-  effectTag?: number; // 执行的操作 替换-更新-删除-移动 - 含有该属性的 fiber 会额外记录
-  effects?: Fiber[]; // 副作用fiber 集合？？？
-  memoizedState?: any; // 用于输出的 state
-  memoizedProps?: any; //旧的 props
-  pendingProps?: any; // 新的 props
-};
+
 
 let dirtyQueue: any[] = [];
 let nextUnitOfWork: Fiber;
 let pendingCommit: Fiber;
 // render 初次挂载
-export function scheduleRender(elements: element, container: DOM): void {
+export function scheduleRender(elements: element, container: HTMLElement): void {
   dirtyQueue.push({
     type: HostRoot,
     container,
@@ -145,9 +131,16 @@ function beginWork(workInProgress: Fiber) {
     case FunctionComponent:
       updateFunctionComponent(workInProgress);
       break;
+    case Fragment:
+      updateFragmentComponent(workInProgress);
     default:
       updateHostComponent(workInProgress);
   }
+}
+
+function updateFragmentComponent(wipFiber: Fiber): void {
+  const newChildElements = wipFiber.pendingProps.children;
+  reconcileChildrenArray(wipFiber, newChildElements);
 }
 
 function updateFunctionComponent(wipFiber: Fiber) {
@@ -208,7 +201,10 @@ function cloneChildFibers(fiber: Fiber) {
 }
 
 /* core 创建 children fiber。*/
-function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
+function reconcileChildrenArray(
+  wipFiber: Fiber,
+  childElements: element[]
+): void {
   /* 来自 class 的 elements 可能是 null、undefin、false */
   let arrayChild = Array.isArray(childElements)
     ? childElements
@@ -221,6 +217,13 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
   arrayChild.forEach((ele, index) => {
     if (typeof ele === "string") {
       ele = createTextElement(ele);
+    }
+
+    if (Array.isArray(ele)) {
+      ele = {
+        type: "Fragment",
+        props: { children: [...ele] }
+      };
     }
 
     const prevFiber = newFiber;
@@ -247,7 +250,9 @@ function reconcileChildrenArray(wipFiber: Fiber, childElements: element[]) {
       let tag = HostComponent;
       switch (typeof ele.type) {
         case "string":
-          tag = HostComponent;
+          if (ele.type === "Fragment") {
+            tag = Fragment;
+          }
           break;
         case "function":
           if (ele.type.isReactComponent) {
@@ -341,8 +346,7 @@ function commitWork(fiber: Fiber) {
    */
   let domParentFiber = fiber.return;
   while (
-    domParentFiber.tag == ClassComponent ||
-    domParentFiber.tag == FunctionComponent
+    [ClassComponent, FunctionComponent, Fragment].includes(domParentFiber.tag)
   ) {
     // 上层遍历至包含 dom 的fiber
     domParentFiber = domParentFiber.return;
@@ -368,12 +372,12 @@ function commitWork(fiber: Fiber) {
   }
 }
 
-function commitDeletion(parentDom: DOM, fiber: Fiber) {
+function commitDeletion(parentDom: HTMLElement, fiber: Fiber) {
   /* class 和 func 组件的删除操作是子dom节点的删除 */
   let node = fiber;
   while (true) {
     /* 寻找 child dom 循环 */
-    if (node.tag == ClassComponent || node.tag == FunctionComponent) {
+    if ([ClassComponent, FunctionComponent, Fragment].includes(node.tag)) {
       node = node.child;
       continue;
     }

@@ -1,13 +1,11 @@
-import { scheduleRender, Fiber } from "./reconciler";
-import { element ,TEXT_ELEMENT} from "./element";
+import { scheduleRender } from "./reconciler";
+import { TEXT_ELEMENT } from "./element";
 
-export declare type DOM = any;
-
-export function render(element: element, container: DOM) {
+export function render(element: element, container: HTMLElement) {
   scheduleRender(element, container);
 }
 
-export function updateDomProperties(dom: DOM, lastProps: any={}, nextProps: any) {
+export function updateDomProperties(dom: HTMLElement, lastProps: any = {}, nextProps: any) {
   for (let propKey in lastProps) {
     if (nextProps.hasOwnProperty(propKey)) {
       continue;

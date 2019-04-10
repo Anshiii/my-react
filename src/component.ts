@@ -1,5 +1,4 @@
 import { scheduleUpdate } from "./reconciler";
-import { Fiber } from "./reconciler";
 export class Component {
   state: any;
   static isReactComponent:boolean = true

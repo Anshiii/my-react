@@ -2,11 +2,6 @@ import { Component } from "./component";
 
 export const TEXT_ELEMENT = "TEXT ELEMENT";
 
-export declare type element = {
-  type: any;
-  props: object;
-};
-
 export function createElement(
   type: string | Function | Component,
   config: object,
@@ -43,4 +38,16 @@ export function createTextElement(value: string): element {
   return createElement(TEXT_ELEMENT, { nodeValue: value });
 }
 
-/* 这里的方法是 jsx 调用。（哦吼？） */
+function Fragment(props){
+  return createElement(Fragment,config,children)
+}
+
+export function createFragmentElement(
+  type: string | Function | Component,
+  config: object,
+  children?: any
+): element {
+  let ele = createElement(type, config, children);
+
+  return ele;
+}
