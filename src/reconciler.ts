@@ -215,6 +215,7 @@ function reconcileChildrenArray(
 
   let oldFiber = wipFiber.alternate ? wipFiber.alternate.child : null;
   let newFiber: Fiber;
+  /* 如果旧 child长度大于 newChilds？？ */
   arrayChild.forEach((ele, index) => {
     if (typeof ele === "string") {
       ele = createTextElement(ele);
@@ -222,7 +223,7 @@ function reconcileChildrenArray(
 
     if (Array.isArray(ele)) {
       ele = {
-        type: "Fragment",
+        type: REACT_FRAGMENT_TYPE,
         props: { children: [...ele] }
       };
     }
@@ -245,7 +246,7 @@ function reconcileChildrenArray(
       };
     }
 
-    /* 不同类型替换,且 ele 存在 */
+    /* 不同类型替换,且 ele 存在，则更新 */
     if (!isSameType && ele) {
       /* setTag */
       let tag = HostComponent;
@@ -282,17 +283,31 @@ function reconcileChildrenArray(
       wipFiber.effects.push(oldFiber);
     }
 
-    if (oldFiber) {
-      /* 变成新的 old*/
-      oldFiber = oldFiber.sibling;
-    }
+
 
     if (index == 0) {
       wipFiber.child = newFiber;
     } else if (prevFiber && ele) {
       prevFiber.sibling = newFiber;
     }
+
+    if (oldFiber) {
+      /* 变成新的 old*/
+      oldFiber = oldFiber.sibling;
+    }
+
+    /* 如果是数组末尾，且 oldFiber.sibling */
+    if (index === arrayChild.length - 1 && oldFiber) {
+      /* 删除 oldFiber 以及 oldFiber 的后续兄弟 */
+      wipFiber.effects = wipFiber.effects || [];
+      while (oldFiber) {
+        oldFiber.effectTag = Deletion;
+        wipFiber.effects.push(oldFiber);
+        oldFiber = oldFiber.sibling
+      }
+    }
   });
+
 }
 
 function completeWork(workInProgress: Fiber) {
