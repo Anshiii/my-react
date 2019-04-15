@@ -297,7 +297,7 @@ function reconcileChildrenArray(
     }
 
     /* 如果是数组末尾，且 oldFiber.sibling */
-    if (index === arrayChild.length - 1 && oldFiber) {
+    if (index === arrayChild.length - 1) {
       /* 删除 oldFiber 以及 oldFiber 的后续兄弟 */
       wipFiber.effects = wipFiber.effects || [];
       while (oldFiber) {
