@@ -499,7 +499,6 @@ function createChild(returnFiber: Fiber, ele: element, index: number): Fiber {
     tag,
     pendingProps: ele.props,
     return: returnFiber,
-    effectTag: Placement,
     index
   };
 }
