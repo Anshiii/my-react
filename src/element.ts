@@ -5,7 +5,7 @@ export const REACT_FRAGMENT_TYPE = Symbol.for('react.fragment')
 
 export function createElement(
   type: string | Function | Component | Symbol,
-  config: object,
+  config: any,
   children?: any
 ): element {
   /* 过滤 null - undefined 的子元素 */
@@ -30,6 +30,7 @@ export function createElement(
 
   return {
     type,
+    key:config&&config.key,
     props
   };
 }

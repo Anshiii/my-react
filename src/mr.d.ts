@@ -1,6 +1,6 @@
 type Fiber = {
     tag: number; //WORKTYPE
-    key?: string;
+    key?: string | number; // 对比时的辅助值
     type?: any; //function|class|string
     stateNode?: HTMLElement | any; // 这个 fiber 相关的 dom？
     child?: Fiber;
@@ -19,4 +19,9 @@ type Fiber = {
 type element = {
     type: any;
     props: object;
+    key?: string | number;
+};
+
+declare type IDLEDeadline = {
+    timeRemaining: () => Number;
 };

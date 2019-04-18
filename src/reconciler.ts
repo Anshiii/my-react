@@ -197,115 +197,6 @@ function cloneChildFibers(fiber: Fiber) {
   }
 }
 
-/* core 创建 children fiber。*/
-function reconcileChildrenArray(
-  wipFiber: Fiber,
-  childElements: element[]
-): void {
-  /* 来自 class 的 elements 可能是 null、undefin、false */
-  let arrayChild = Array.isArray(childElements)
-    ? childElements
-    : [childElements];
-
-  arrayChild = arrayChild.filter(item => item);
-
-  let oldFiber = wipFiber.alternate ? wipFiber.alternate.child : null;
-  let newFiber: Fiber;
-  /* 如果旧 child长度大于 newChilds？？ */
-  arrayChild.forEach((ele, index) => {
-    if (typeof ele === "string") {
-      ele = createTextElement(ele);
-    }
-
-    if (Array.isArray(ele)) {
-      ele = {
-        type: REACT_FRAGMENT_TYPE,
-        props: { children: [...ele] }
-      };
-    }
-
-    const prevFiber = newFiber;
-    const isSameType = oldFiber && ele && ele.type == oldFiber.type;
-
-    /* 相同类型 更新- ele 肯定也存在 */
-    if (isSameType) {
-      newFiber = {
-        type: oldFiber.type,
-        tag: oldFiber.tag,
-        stateNode: oldFiber.stateNode,
-        pendingProps: ele.props,
-        memoizedState: oldFiber.memoizedState,
-        return: wipFiber, // 源码是 return
-        alternate: oldFiber,
-        effectTag: Update,
-        index
-      };
-    }
-
-    /* 不同类型替换,且 ele 存在，则更新 */
-    if (!isSameType && ele) {
-      /* setTag */
-      let tag = HostComponent;
-      switch (typeof ele.type) {
-        case 'symbol':
-          if (ele.type === REACT_FRAGMENT_TYPE) {
-            tag = Fragment;
-          }
-          /* ele.type 的typeof 怎么是 symbol + function */
-          break;
-        case "function":
-          if (ele.type.isReactComponent) {
-            tag = ClassComponent;
-          } else {
-            tag = FunctionComponent;
-          }
-          break;
-      }
-
-      newFiber = {
-        type: ele.type,
-        tag,
-        pendingProps: ele.props,
-        return: wipFiber,
-        effectTag: Placement,
-        index
-      };
-    }
-
-    if (!isSameType && oldFiber) {
-      oldFiber.effectTag = Deletion;
-      /*因为这个fiber 不在 wip tree 里，所以放在 effects 里 */
-      wipFiber.effects = wipFiber.effects || [];
-      wipFiber.effects.push(oldFiber);
-    }
-
-
-
-    if (index == 0) {
-      wipFiber.child = newFiber;
-    } else if (prevFiber && ele) {
-      prevFiber.sibling = newFiber;
-    }
-
-    if (oldFiber) {
-      /* 变成新的 old*/
-      oldFiber = oldFiber.sibling;
-    }
-
-    /* 如果是数组末尾，且 oldFiber.sibling */
-    if (index === arrayChild.length - 1) {
-      /* 删除 oldFiber 以及 oldFiber 的后续兄弟 */
-      wipFiber.effects = wipFiber.effects || [];
-      while (oldFiber) {
-        oldFiber.effectTag = Deletion;
-        wipFiber.effects.push(oldFiber);
-        oldFiber = oldFiber.sibling
-      }
-    }
-  });
-
-}
-
 function completeWork(workInProgress: Fiber) {
   /* for what? */
   switch (workInProgress.tag) {
@@ -325,6 +216,7 @@ function completeWork(workInProgress: Fiber) {
       thisEffect,
       childEffects
     );
+    console.log(workInProgress)
   } else {
     /* root ,计算了和收集。 */
     pendingCommit = workInProgress;
@@ -359,7 +251,7 @@ function commitWork(fiber: Fiber) {
    */
   let domParentFiber = fiber.return;
   while (
-    ![HostRoot,HostComponent].includes(domParentFiber.tag)
+    ![HostRoot, HostComponent].includes(domParentFiber.tag)
   ) {
     // 上层遍历至包含 dom 的fiber
     domParentFiber = domParentFiber.return;
@@ -372,7 +264,8 @@ function commitWork(fiber: Fiber) {
       /* 非 host 组件新增在dom没有体现。 */
       if (fiber.tag == HostComponent) {
         // ???@que 为啥
-        domParent.appendChild(dom);
+        // domParent.appendChild(dom);
+        commitPlacement(domParent, fiber);
       }
       break;
     case Update:
@@ -385,12 +278,14 @@ function commitWork(fiber: Fiber) {
   }
 }
 
-function commitDeletion(parentDom: HTMLElement, fiber: Fiber) {
+
+/* Deletion 的操作 */
+function commitDeletion(parentDom: HTMLElement, fiber: Fiber): void {
   /* class 和 func 组件的删除操作是子dom节点的删除 */
   let node = fiber;
   while (true) {
     /* 寻找 child dom 循环 */
-    if (![HostRoot,HostComponent].includes(node.tag)) {
+    if (![HostRoot, HostComponent].includes(node.tag)) {
       node = node.child;
       continue;
     }
@@ -409,6 +304,248 @@ function commitDeletion(parentDom: HTMLElement, fiber: Fiber) {
   }
 }
 
+/* Placement 的操作 */
+function commitPlacement(parentDom: HTMLElement, fiber: Fiber): void {
+  const before: HTMLElement | null = getHostSibling(fiber);
+  if (before) {
+    parentDom.insertBefore(fiber.stateNode, before)
+  } else {
+    parentDom.appendChild(fiber.stateNode);
+  }
+}
+
+/* 查找之前到 sibling dom */
+function getHostSibling(fiber: Fiber): HTMLElement | null {
+  let node: Fiber = fiber;
+  siblings: while (true) {
+    while (node.sibling == null) {
+      return null;
+    }
+    node = node.sibling;
+    while (![HostRoot, HostComponent].includes(node.tag)) {
+      continue siblings;
+    }
+
+    if (!(node.effectTag & Placement)) {
+      return node.stateNode;
+    }
+  }
+}
+
+function reconcileChildrenArray(
+  wipFiber: Fiber,
+  newChildren: element[]
+): void {
+  /* 来自 class 的 elements 可能是 null、undefin、false */
+  let arrayChild = Array.isArray(newChildren)
+    ? newChildren
+    : [newChildren];
+
+  /* 过滤了 null-undef-false-'' */
+  arrayChild = arrayChild.filter(item => item);
+
+
+  /* newFiber 的第一个 */
+  let resultingFirstChild: Fiber | null = null;
+  let previousNewFiber: Fiber | null = null;
+
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child || null; //初始的 index 是不是0？
+  let lastPlacedIndex = 0;
+  let newIdx = 0;
+  let nextOldFiber = null;
+
+  /* 
+    1.① - 没有 oldFiber ，则认为是 mount，全都 placement
+    2.② - 有 oldFbier - key不相等，进入 mapKey 
+                      - key相等，update。
+  */
+
+  //① all placement
+  if (oldFiber === null) {
+    for (; newIdx < arrayChild.length; newIdx++) {
+      let ele = supplyElement(arrayChild[newIdx])
+      const newFiber = createChild(wipFiber, ele, newIdx);
+      if (!newFiber) continue;
+      lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+
+      if (previousNewFiber === null) {
+        resultingFirstChild = newFiber;
+      } else {
+        previousNewFiber.sibling = newFiber;
+      }
+      previousNewFiber = newFiber;
+    }
+
+    /* return */
+    wipFiber.child = resultingFirstChild;
+    return
+  }
+
+  // ② key 相等的 update
+  for (; oldFiber !== null && newIdx < arrayChild.length; newIdx++) {
+    let ele = supplyElement(arrayChild[newIdx])
+    if (oldFiber.index > newIdx) {
+      nextOldFiber = oldFiber;
+      oldFiber = null;
+    } else {
+      nextOldFiber = oldFiber.sibling;
+    }
+    const newFiber = updateSlot(wipFiber, oldFiber, ele, newIdx)
+    /* 如果 key相等(都是 null也相等), newFiber 才有值 
+      为 null 说明 子元素有带 key 属性的*/
+    if (newFiber === null) {
+
+      if (oldFiber === null) {
+        /* .-. */
+        oldFiber = nextOldFiber;
+      }
+
+      break;
+    }
+
+    /* 说明两者的 type 不一致。 */
+    if (oldFiber && newFiber.alternate === null) {
+      deleteChild(wipFiber, oldFiber);
+    }
+    lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+    if (previousNewFiber === null) {
+      resultingFirstChild = newFiber;
+    } else {
+      previousNewFiber.sibling = newFiber;
+    }
+    previousNewFiber = newFiber;
+    oldFiber = nextOldFiber;
+  }
+
+  /* newChil 遍历完毕后，剩下的 oldFiber 可以直接删除 */
+  if (newIdx === arrayChild.length) {
+    deleteRemainingChildren(wipFiber, oldFiber);
+    wipFiber.child = resultingFirstChild;
+    return;
+  }
+
+  const existingChildren = mapRemainingChildren(wipFiber, oldFiber);
+  for (; newIdx < arrayChild.length; newIdx++) {
+    let ele = supplyElement(arrayChild[newIdx])
+    const newFiber = updateFromMap(
+      existingChildren,
+      wipFiber,
+      newIdx,
+      ele
+    )
+
+    /* 重复使用的 oldFiber 要从 existingChildren 中移出，不然之后会被回收 */
+    if (newFiber && newFiber.alternate !== null) {
+      existingChildren.delete(newFiber.key || newIdx)
+    }
+    lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
+
+    if (previousNewFiber === null) {
+      resultingFirstChild = newFiber;
+    } else {
+      previousNewFiber.sibling = newFiber;
+    }
+    previousNewFiber = newFiber;
+  }
+
+  /* 删除没被 map 过的 fiber */
+  existingChildren.forEach(child => deleteChild(wipFiber, child));
+  /* 设置 child */
+  wipFiber.child = resultingFirstChild;
+}
+
+
+/* 处理特别(str & array)的 ele */
+function supplyElement(ele: element): element {
+  if (typeof ele === "string") {
+    ele = createTextElement(ele);
+  }
+
+  if (Array.isArray(ele)) {
+    ele = {
+      type: REACT_FRAGMENT_TYPE,
+      props: { children: [...ele] },
+      key: ele.key
+    };
+  }
+
+  return ele;
+}
+
+function createChild(returnFiber: Fiber, ele: element, index: number): Fiber {
+  let tag = HostComponent;
+  switch (typeof ele.type) {
+    case 'symbol':
+      if (ele.type === REACT_FRAGMENT_TYPE) {
+        tag = Fragment;
+      }
+      /* ele.type 的typeof 怎么是 symbol + function */
+      break;
+    case "function":
+      if (ele.type.isReactComponent) {
+        tag = ClassComponent;
+      } else {
+        tag = FunctionComponent;
+      }
+      break;
+  }
+
+  /* Placement */
+  return {
+    type: ele.type,
+    key: ele.key,
+    tag,
+    pendingProps: ele.props,
+    return: returnFiber,
+    effectTag: Placement,
+    index
+  };
+}
+
+/* 根据旧的FIBER更新,type 相等。 */
+function updateSlot(returnFiber: Fiber, oldFiber: Fiber, ele: element, index: number): Fiber | null {
+  // key 相等才会 update 否则返回null
+
+  if (oldFiber === null) return null;
+  if (ele.key !== oldFiber.key) return null;
+  /* 都是null - 但是type不同？ */
+  if (ele.type === oldFiber.type) {
+    return {
+      type: oldFiber.type,
+      tag: oldFiber.tag,
+      key: ele.key,
+      stateNode: oldFiber.stateNode,
+      pendingProps: ele.props,
+      memoizedState: oldFiber.memoizedState,
+      return: returnFiber, // 源码是 return
+      alternate: oldFiber, // 有利用价值的才会作为 alternate 留着
+      effectTag: Update,
+      index,
+    }
+  } else {
+    return createChild(returnFiber, ele, index)
+  }
+}
+
+/* 删除某个 fiber */
+function deleteChild(returnFiber: Fiber, fiber: Fiber): void {
+  /* @TODO fiber 使用 firstEffect/nextEffect/lastEffect */
+  fiber.effectTag = Deletion;
+  returnFiber.effects = returnFiber.effects || [];
+  returnFiber.effects.push(fiber);
+}
+
+
+/* 旧的 childs 比 新的 child 长。。，删除剩余的 fiber */
+function deleteRemainingChildren(returnFiber: Fiber, oldFiber: Fiber) {
+  returnFiber.effects = returnFiber.effects || [];
+  while (oldFiber) {
+    oldFiber.effectTag = Deletion;
+    returnFiber.effects.push(oldFiber);
+    oldFiber = oldFiber.sibling
+  }
+}
+
 /* 记录 key 与 组件映射 */
 function mapRemainingChildren(
   returnFiber: Fiber,
@@ -418,7 +555,7 @@ function mapRemainingChildren(
   let existingChild = currentFirstChild;
 
   /* 遍历 child 及其 sibling，记录在 map 里 */
-  while (existingChild !== null) {
+  while (existingChild != null) {
     if (existingChild.key !== null) {
       existingChildren.set(existingChild.key, existingChild);
     } else {
@@ -430,37 +567,43 @@ function mapRemainingChildren(
   return existingChildren;
 }
 
+
 /* 获取更新后的 fiber */
 function updateFromMap(
   existingChildren: Map<string | number, Fiber>,
   returnFiber: Fiber,
   newIdx: number,
-  newChild: any
-): Fiber {
-  /*  */
-  if (typeof newChild === "string" || typeof newChild === "number") {
-    const matchedFiber = existingChildren.get(newIdx) || null;
-    //  update TextNode
-    /* 
-    updateTextNode(
-        returnFiber,
-        matchedFiber,
-        '' + newChild,
-        expirationTime,
-      ) */
-  }
-  if (typeof newChild === "object" && newChild !== null) {
-    const matchedFiber =
-      existingChildren.get(newChild.key === null ? newIdx : newChild.key) ||
-      null;
-
-    /* 
-    updateElement(
-            returnFiber,
-            matchedFiber,
-            newChild,
-            expirationTime,
-          ) */
-  }
-  return returnFiber;
+  newChild: element
+): Fiber | null {
+  /*  oldFiber */
+  const matchedFiber = existingChildren.get(newChild.key || newIdx) || null;
+  /* tip 删除 没被get出来的node */
+  return updateSlot(returnFiber, matchedFiber, newChild, newIdx)
 }
+
+
+/* 定义 wipFiber 的 effectTag */
+function placeChild(
+  newFiber: Fiber,
+  lastPlacedIndex: number, //最新的位置，newFiber.index?
+  newIndex: number
+  ): number {
+    const current = newFiber.alternate;
+    if (current != null) {
+      const oldIndex = current.index;
+      if (oldIndex < lastPlacedIndex) {
+        // This is a move.
+        newFiber.effectTag = Placement;
+        return lastPlacedIndex;
+      } else {
+        // This item can stay in place.
+        return oldIndex;
+      }
+    } else {
+      // This is an insertion.
+      newFiber.effectTag = Placement;
+      return lastPlacedIndex;
+    }
+
+}
+/* 从 ele 中获取 tag */
