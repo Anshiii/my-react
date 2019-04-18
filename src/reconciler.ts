@@ -308,8 +308,10 @@ function commitDeletion(parentDom: HTMLElement, fiber: Fiber): void {
 function commitPlacement(parentDom: HTMLElement, fiber: Fiber): void {
   const before: HTMLElement | null = getHostSibling(fiber);
   if (before) {
+    /* insertBefore 则调整位置到指定元素前一个 */
     parentDom.insertBefore(fiber.stateNode, before)
   } else {
+    /* appendChild 同一个元素相当于调整其位置到最后 */
     parentDom.appendChild(fiber.stateNode);
   }
 }
@@ -582,28 +584,32 @@ function updateFromMap(
 }
 
 
-/* 定义 wipFiber 的 effectTag */
+/* 定义 wipFiber 的 effectTag，placement？
+ 如果 旧位置在新位置 之前，需要移动 => 放在index或者稳定的 sibling 之前。；
+ 否则 保持位置(effectTag UPDATE),返回旧位置index。
+
+ 若不存在 oldFiber，则 placement (插入)。
+  */
 function placeChild(
   newFiber: Fiber,
-  lastPlacedIndex: number, //最新的位置，newFiber.index?
+  lastPlacedIndex: number, //上一个位置到 place
   newIndex: number
-  ): number {
-    const current = newFiber.alternate;
-    if (current != null) {
-      const oldIndex = current.index;
-      if (oldIndex < lastPlacedIndex) {
-        // This is a move.
-        newFiber.effectTag = Placement;
-        return lastPlacedIndex;
-      } else {
-        // This item can stay in place.
-        return oldIndex;
-      }
-    } else {
-      // This is an insertion.
+): number {
+  const current = newFiber.alternate;
+  if (current != null) {
+    const oldIndex = current.index;
+    if (oldIndex < lastPlacedIndex) {
+      // This is a move.
       newFiber.effectTag = Placement;
       return lastPlacedIndex;
+    } else {
+      // This item can stay in place.
+      return oldIndex;
     }
+  } else {
+    // This is an insertion.
+    newFiber.effectTag = Placement;
+    return lastPlacedIndex;
+  }
 
 }
-/* 从 ele 中获取 tag */
