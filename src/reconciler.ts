@@ -359,7 +359,7 @@ function commitWork(fiber: Fiber) {
    */
   let domParentFiber = fiber.return;
   while (
-    domParentFiber.tag !== HostComponent
+    ![HostRoot,HostComponent].includes(domParentFiber.tag)
   ) {
     // 上层遍历至包含 dom 的fiber
     domParentFiber = domParentFiber.return;
@@ -390,7 +390,7 @@ function commitDeletion(parentDom: HTMLElement, fiber: Fiber) {
   let node = fiber;
   while (true) {
     /* 寻找 child dom 循环 */
-    if (node.tag !== HostComponent) {
+    if (![HostRoot,HostComponent].includes(node.tag)) {
       node = node.child;
       continue;
     }
