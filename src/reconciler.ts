@@ -578,8 +578,11 @@ function updateFromMap(
 ): Fiber | null {
   /*  oldFiber */
   const matchedFiber = existingChildren.get(newChild.key || newIdx) || null;
-  /* tip 删除 没被get出来的node */
-  return updateSlot(returnFiber, matchedFiber, newChild, newIdx)
+
+  return matchedFiber === null
+    ? createChild(returnFiber, newChild, newIdx)
+    : updateSlot(returnFiber, matchedFiber, newChild, newIdx)
+
 }
 
 
