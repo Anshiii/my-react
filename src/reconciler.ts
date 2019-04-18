@@ -45,10 +45,6 @@ export function scheduleUpdate(instance: Component, partialState: any): void {
   requestIdleCallback(performWork);
 }
 
-declare type IDLEDeadline = {
-  timeRemaining: () => Number;
-};
-
 function performWork(deadline: IDLEDeadline) {
   workLoop(deadline);
   /*  */
@@ -363,7 +359,7 @@ function commitWork(fiber: Fiber) {
    */
   let domParentFiber = fiber.return;
   while (
-    [ClassComponent, FunctionComponent, Fragment].includes(domParentFiber.tag)
+    domParentFiber.tag !== HostComponent
   ) {
     // 上层遍历至包含 dom 的fiber
     domParentFiber = domParentFiber.return;
@@ -394,7 +390,7 @@ function commitDeletion(parentDom: HTMLElement, fiber: Fiber) {
   let node = fiber;
   while (true) {
     /* 寻找 child dom 循环 */
-    if ([ClassComponent, FunctionComponent, Fragment].includes(node.tag)) {
+    if (node.tag !== HostComponent) {
       node = node.child;
       continue;
     }
