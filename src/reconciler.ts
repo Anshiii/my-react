@@ -492,7 +492,7 @@ function createChild(returnFiber: Fiber, ele: element, index: number): Fiber {
       break;
   }
 
-  /* Placement */
+  /* Placement  交给 placeChild 判断*/
   return {
     type: ele.type,
     key: ele.key,
@@ -613,5 +613,4 @@ function placeChild(
     newFiber.effectTag = Placement;
     return lastPlacedIndex;
   }
-
 }
