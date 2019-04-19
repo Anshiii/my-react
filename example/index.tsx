@@ -1,41 +1,44 @@
-import Mreact from '../src/index'
+import React from "../src/index";
 
-const {Component,render,createElement} = Mreact;
+const { Component, render,createElement } = React;
 /* EXAMPLE */
 const root = document.getElementById("root");
+
+const data = [
+  { name: "a1", age: "32" },
+  { name: "a2", age: "33" },
+  { name: "a3", age: "12" },
+  { name: "a4", age: "12" },
+  { name: "a5", age: "12" },
+];
 class App extends Component {
   state = {
-    name: " !"
+    title: " !",
+    data,
   };
 
   click = () => {
     this.setState({
-      name: "???~"
+      data: [
+        { name: "a1", age: "12" },
+        { name: "a9", age: "12" },
+        { name: "a3", age: "32" },
+      ]
     });
   };
 
   render() {
-    return createElement(
-      "div",
-      {
-        onClick: this.click
-      },
-      "Hello ",
-      this.props.name,
-      this.state.name
+    const { data } = this.state;
+    return (
+      <div onClick={this.click}>
+        <p>121</p>
+        {data.map(item => <div key={item.name}>{item.name}</div>)}
+      </div>
     );
   }
 }
 
-const a = <span>1</span>;
-
-function funC (props:any):any{
-  return createElement(
-    "div",
-    props,
-    "funC ",
-    props.title,
-  )
+function FuncCom(props: any): any {
+  return <div>{props.title}</div>;
 }
-const element = createElement(App, { name: "World" });
-render(element, root);
+render(<App title="类组件" />, root);
