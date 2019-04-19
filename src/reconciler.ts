@@ -140,12 +140,12 @@ function updateFragmentComponent(wipFiber: Fiber): void {
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
-function updateFunctionComponent(wipFiber: Fiber) {
-  let component = wipFiber.type(wipFiber.pendingProps);
-  reconcileChildrenArray(wipFiber, component);
+function updateFunctionComponent(wipFiber: Fiber): void {
+  let newChildElements = wipFiber.type(wipFiber.pendingProps);
+  reconcileChildrenArray(wipFiber, newChildElements);
 }
 
-function updateHostComponent(wipFiber: Fiber) {
+function updateHostComponent(wipFiber: Fiber): void {
   if (!wipFiber.stateNode) {
     wipFiber.stateNode = createDomElement(wipFiber);
   }
@@ -153,7 +153,7 @@ function updateHostComponent(wipFiber: Fiber) {
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
-function updateClassComponent(wipFiber: Fiber) {
+function updateClassComponent(wipFiber: Fiber): void {
   let instance = wipFiber.stateNode;
   if (instance == null) {
     instance = wipFiber.stateNode = createInstance(wipFiber);
@@ -173,7 +173,7 @@ function updateClassComponent(wipFiber: Fiber) {
   reconcileChildrenArray(wipFiber, newChildElements);
 }
 
-function cloneChildFibers(fiber: Fiber) {
+function cloneChildFibers(fiber: Fiber): void {
   /* 因为有  所以要新建 fiber node */
   const oldFiber = fiber.alternate;
   if (!oldFiber.child) return;
@@ -197,7 +197,7 @@ function cloneChildFibers(fiber: Fiber) {
   }
 }
 
-function completeWork(workInProgress: Fiber) {
+function completeWork(workInProgress: Fiber): void {
   /* for what? */
   switch (workInProgress.tag) {
     case FunctionComponent:
@@ -224,7 +224,7 @@ function completeWork(workInProgress: Fiber) {
 }
 
 /* 更新 DOM */
-function commitAllWork(fiber: Fiber) {
+function commitAllWork(fiber: Fiber): void {
   /* 所有 effectTage fiber */
   console.log(fiber.effects);
   fiber.effects &&
@@ -237,7 +237,7 @@ function commitAllWork(fiber: Fiber) {
   pendingCommit = null;
 }
 
-function commitWork(fiber: Fiber) {
+function commitWork(fiber: Fiber): void {
   if (fiber.tag == HostRoot) {
     return; // @que？根元素的改动直接无视-
   }
