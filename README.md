@@ -10,11 +10,19 @@ a simple project from react source code to show how the react work 📖
 * [didact-fiber-incremental-reconciliation](https://engineering.hexacta.com/didact-fiber-incremental-reconciliation-b2fe028dcaec)
 * [Under-the-hood-ReactJS](https://github.com/Bogdan-Lyashenko/Under-the-hood-ReactJS)
 
+## Features
+自带的功能点
+- classComponent
+- 基于 fiber 的 reconcile
+- createElement （可配置 babel 后使用 jsx）
+- 异步计算更新(使用 requestIdleCallback 调度任务)
+
 ## todo
 - [x] key
 - [x] fragment(用fragment包裹数组child，之前？)
 - [x] functionComponent
 - [ ] hooks
+- [ ] ref
 - [ ] priorities
 - [ ] events
 
