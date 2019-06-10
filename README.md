@@ -22,6 +22,7 @@ a simple project from react source code to show how the react work 📖
 - [x] fragment(用fragment包裹数组child，之前？)
 - [x] functionComponent
 - [ ] hooks
+- [ ] setState 合并
 - [ ] ref
 - [ ] priorities
 - [ ] events
